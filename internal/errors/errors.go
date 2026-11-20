@@ -24,6 +24,14 @@ var (
 	ErrReservedExportKeyingMaterial = stderrors.New("ExportKeyingMaterial can not be used with a reserved label")
 	ErrApplicationDataEpochZero     = stderrors.New("ApplicationData with epoch of 0")
 	ErrUnhandledContextType         = stderrors.New("unhandled contentType")
+	// ErrUnauthenticatedRecordDiscarded marks a structurally valid record whose
+	// content type cannot be attributed to any negotiated protocol state before
+	// authentication completes. It is a control-flow sentinel, not a connection
+	// failure: the caller must converge by silently dropping (or, for future
+	// epochs, queuing) the record and must never emit an alert for it. After the
+	// handshake is established the same input keeps its existing fatal-alert
+	// semantics instead of being mapped to this error.
+	ErrUnauthenticatedRecordDiscarded = stderrors.New("unauthenticated record with an unattributable content type discarded")
 
 	ErrCertificateVerifyNoCertificate       = stderrors.New("client sent certificate verify but we have no certificate to verify")
 	ErrCipherSuiteNoIntersection            = stderrors.New("client+server do not support any shared cipher suites")

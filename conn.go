@@ -2417,6 +2417,23 @@ func (c *Conn) prepareIncomingPacket(buf []byte, rAddr net.Addr, bufferLease *re
 		return incomingPacketState{}, false, nil
 	}
 
+	// Before authentication, a fixed-header record whose content type no
+	// negotiated pre-handshake state can own (a post-handshake-only type such as
+	// ReturnRoutabilityCheck, or an unknown/reserved value) is unauthenticated,
+	// unattributable input. Terminating the handshake for it surfaced unrelated
+	// payload-decoding errors (e.g. ErrLengthMismatch) on this side and only a
+	// close/alert on the peer, hiding the real cause. Converge by dropping it.
+	// The DTLS 1.3 ciphertext interval is decided above by record form, so this
+	// cannot swallow unified records; after establishment the gate is bypassed and
+	// authenticated protocol errors keep their existing fatal-alert semantics.
+	if !c.isHandshakeCompletedSuccessfully() &&
+		dtlshandshake.IsUnauthenticatedPlaintextContentType(protocol.ContentType(buf[0])) {
+		c.log.Debugf("discarded unauthenticated record with unattributable content type %d: %v",
+			buf[0], dtlserrors.ErrUnauthenticatedRecordDiscarded)
+
+		return incomingPacketState{}, false, nil
+	}
+
 	return c.prepareLegacyPacket(buf, rAddr, bufferLease)
 }
 
